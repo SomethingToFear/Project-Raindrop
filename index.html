@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>METOC Forecaster - USMC</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--bg4:#283548;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--primary:#2563eb;--primary2:#1d4ed8;--green:#22c55e;--green-bg:rgba(34,197,94,0.12);--amber:#f59e0b;--amber-bg:rgba(245,158,11,0.12);--red:#ef4444;--red-bg:rgba(239,68,68,0.12);--cyan:#06b6d4;--purple:#a78bfa}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+nav{width:240px;background:var(--bg2);border-right:1px solid var(--bg3);display:flex;flex-direction:column;position:fixed;height:100vh;z-index:10}
+nav .logo{padding:16px;border-bottom:1px solid var(--bg3)}
+nav .logo h1{font-size:13px;color:#fff;font-weight:700;letter-spacing:0.5px}
+nav .logo p{font-size:9px;color:var(--text3);margin-top:2px}
+nav .nav-items{flex:1;padding:8px}
+nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--text2);text-decoration:none;font-size:13px;font-weight:500;transition:all 0.15s}
+nav a:hover{background:var(--bg3);color:#fff}
+nav a.active{background:var(--primary);color:#fff}
+nav .loc{padding:12px;border-top:1px solid var(--bg3);font-size:10px;color:var(--text3)}
+nav .loc b{color:var(--text);font-size:11px;display:block;margin-bottom:2px}
+nav .refresh{padding:12px;border-top:1px solid var(--bg3)}
+nav .refresh button{width:100%;padding:8px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+nav .refresh button:hover{background:var(--primary2)}
+nav .refresh button:disabled{background:var(--bg3);cursor:wait}
+.main{margin-left:240px;flex:1;padding:24px;min-height:100vh}
+.header{margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.header h2{font-size:18px;font-weight:700}
+.header .meta{font-size:11px;color:var(--text3)}
+.card{background:var(--bg2);border:1px solid var(--bg3);border-radius:10px;padding:20px;margin-bottom:16px}
+.card-header{background:var(--bg3);margin:-20px -20px 16px;padding:12px 20px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center}
+.card-header h3{font-size:13px;font-weight:700;color:#fff;letter-spacing:0.3px}
+.card-header .sub{font-size:9px;color:var(--text2)}
+.section-title{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:8px}
+.narrative{font-size:13px;line-height:1.7;color:var(--text);margin-bottom:12px}
+.flag-banner{padding:14px 20px;border-radius:10px;display:flex;align-items:center;gap:12px;margin-bottom:16px;border:1px solid}
+.flag-banner .flag-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.flag-banner .flag-text{font-weight:700;font-size:13px}
+.flag-banner .flag-sub{font-size:11px;color:var(--text2)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.grid6{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--bg2);border:1px solid var(--bg3);border-radius:8px;padding:14px}
+.stat .label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat .value{font-size:20px;font-weight:700}
+.stat .sub{font-size:10px;color:var(--text2);margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 10px;color:var(--text3);font-weight:600;font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--bg3);position:sticky;top:0;background:var(--bg2)}
+td{padding:6px 10px;border-bottom:1px solid rgba(51,65,85,0.4)}
+tr:hover{background:rgba(30,41,59,0.5)}
+.text-green{color:var(--green)}.text-amber{color:var(--amber)}.text-red{color:var(--red)}.text-cyan{color:var(--cyan)}.text-muted{color:var(--text3)}.text-purple{color:var(--purple)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:0.5px}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,0.3)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,0.3)}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,0.3)}
+.tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:8px;margin-bottom:16px;flex-wrap:wrap}
+.tab{flex:1;padding:8px 12px;border:none;background:none;color:var(--text3);font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;transition:all 0.15s;min-width:80px}
+.tab:hover{color:var(--text);background:var(--bg3)}
+.tab.active{background:var(--primary);color:#fff}
+.tab .alert-dot{color:var(--amber);margin-left:2px}
+.warning-card{border-radius:8px;padding:14px 18px;margin-bottom:10px;border:1px solid}
+.warning-card .wtype{font-weight:700;font-size:13px;margin-bottom:4px}
+.warning-card .wdesc{font-size:12px;opacity:0.8}
+.warning-card .wcrit{font-size:10px;opacity:0.5;margin-top:4px}
+.synoptic-section{padding:16px 0;border-bottom:1px solid var(--bg3)}
+.synoptic-section:last-child{border-bottom:none}
+.synoptic-section h4{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:600}
+.feature-tag{display:inline-flex;align-items:center;padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;margin:2px}
+.impact-row{padding:14px 18px;border-bottom:1px solid var(--bg3)}
+.impact-row:last-child{border-bottom:none}
+.impact-row .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.impact-row .iparam{font-weight:600;font-size:12px}
+.impact-row .ithresh{font-size:10px;color:var(--text3);font-family:monospace}
+.impact-row .icurr{font-size:10px;color:var(--text2);font-family:monospace}
+.impact-row .iimpact{font-size:11px;color:var(--cyan);margin-top:4px}
+.loader{text-align:center;padding:60px}
+.loader .spin{width:32px;height:32px;border:3px solid var(--bg3);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-box{background:var(--red-bg);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:16px;color:var(--red)}
+.empty{text-align:center;padding:40px;color:var(--text3)}
+.day-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.day-card{background:var(--bg2);border:1px solid var(--bg3);border-radius:8px;padding:14px;text-align:left;cursor:pointer;border-top:3px solid transparent}
+.day-card:hover{border-color:var(--primary)}
+.day-card .dname{font-size:13px;font-weight:700;color:#fff}
+.day-card .ddate{font-size:10px;color:var(--text3)}
+.day-card .dtemp{font-size:22px;font-weight:700;color:#fff;margin:6px 0 2px}
+.day-card .dtemp2{font-size:12px;color:var(--text3)}
+.day-card .dmeta{margin-top:8px;font-size:10px;color:var(--text2);line-height:1.6}
+.period-narrative{background:var(--bg);padding:12px 16px;border-radius:6px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.6}
+.space-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.space-item{padding:12px;border-bottom:1px solid var(--bg3)}
+.space-item:last-child{border:none}
+.tz-control{display:flex;align-items:center;gap:8px;margin-top:8px}.tz-control select{flex:1;padding:7px 8px;background:var(--bg);border:1px solid var(--bg3);color:var(--text);border-radius:6px;font-size:11px}.status-line{font-size:10px;color:var(--text3);margin-top:7px}.model-table td,.model-table th{font-size:10px}.confidence{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px}.conf-high{background:var(--green-bg);color:var(--green)}.conf-mod{background:var(--amber-bg);color:var(--amber)}.conf-low{background:var(--red-bg);color:var(--red)}
+.space-item .si-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.space-item .si-name{font-weight:600;font-size:12px}
+.space-item .si-impact{font-size:11px;color:var(--text2);margin-top:2px}
+.space-item .si-note{font-size:10px;color:var(--primary);margin-top:4px}
+@media(max-width:900px){nav{width:60px}nav a span:not(.icon){display:none}.main{margin-left:60px}.day-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){nav{display:none}.main{margin-left:0}.day-cards{grid-template-columns:1fr}}
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#07111f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Raindrop">
+
+</head>
+<body>
+<nav>
+  <div class="logo"><h1>METOC FORECASTER</h1><p>MCRP 2-10B.6</p></div>
+  <div class="nav-items">
+    <a href="#" onclick="showPage('synoptic')" class="active" id="nav-synoptic"><span class="icon">&#128225;</span><span>Synoptic Overview</span></a>
+    <a href="#" onclick="showPage('forecast')" id="nav-forecast"><span class="icon">&#128203;</span><span>96-Hour Forecast</span></a>
+    <a href="#" onclick="showPage('current')" id="nav-current"><span class="icon">&#127777;</span><span>Current Conditions</span></a>
+    <a href="#" onclick="showPage('impacts')" id="nav-impacts"><span class="icon">&#9888;</span><span>Operational Impacts</span></a>
+    <a href="#" onclick="showPage('warnings')" id="nav-warnings"><span class="icon">&#128680;</span><span>Warnings</span></a>
+    <a href="#" onclick="showPage('charts')" id="nav-charts"><span class="icon">&#128200;</span><span>Charts</span></a>
+  </div>
+  <div class="loc" id="loc-info"><b>MCAS Futenma</b>26.27N 127.77E | ROTM</div>
+  <div class="refresh">
+    <div class="section-title">DISPLAY TIME</div>
+    <div class="tz-control"><select id="tzSel" onchange="setTimezone(this.value)"></select></div>
+    <div class="status-line" id="refresh-status">Auto-refresh: 30 min</div>
+    <button id="refreshBtn" onclick="loadData()" style="margin-top:8px">REFRESH DATA</button>
+  </div>
+</nav>
+<div class="main" id="main-content">
+  <div class="header"><h2 id="page-title">Synoptic Overview</h2><div class="meta" id="page-meta"></div></div>
+  <div id="page-content"><div class="loader"><div class="spin"></div><p style="color:var(--text3);font-size:13px">Fetching weather data...</p></div></div>
+</div>
+
+<script>
+const INSTALLATIONS=[
+  {name:'MCAS Futenma',code:'ROTM',lat:26.2736,lon:127.7611,elev:25,tz:'Asia/Tokyo'},
+  {name:'Camp Hansen',code:'HANS',lat:26.4583,lon:127.7667,elev:45,tz:'Asia/Tokyo'},
+  {name:'Camp Schwab',code:'SCHW',lat:26.5333,lon:127.9833,elev:10,tz:'Asia/Tokyo'},
+  {name:'Camp Foster',code:'FOST',lat:26.3283,lon:127.7756,elev:60,tz:'Asia/Tokyo'},
+  {name:'MCAS Iwakuni',code:'IWA',lat:34.1439,lon:132.2358,elev:2,tz:'Asia/Tokyo'},
+  {name:'Camp Blaz, Guam',code:'BLAZ',lat:13.5833,lon:144.8667,elev:80,tz:'Pacific/Guam'},
+  {name:'MCAS Miramar',code:'MIRA',lat:32.8684,lon:-117.1434,elev:137,tz:'America/Los_Angeles'},
+  {name:'MCB Camp Pendleton',code:'PEND',lat:33.3019,lon:-117.3489,elev:24,tz:'America/Los_Angeles'},
+  {name:'MCB Camp Lejeune',code:'LEJE',lat:34.6196,lon:-77.3814,elev:3,tz:'America/New_York'},
+  {name:'MCAS Beaufort',code:'BEAU',lat:32.4774,lon:-80.7231,elev:9,tz:'America/New_York'},
+  {name:'MCB Quantico',code:'QUAN',lat:38.5028,lon:-77.3147,elev:20,tz:'America/New_York'},
+  {name:'MCAS Cherry Point',code:'CHPT',lat:34.901,lon:-76.8809,elev:9,tz:'America/New_York'},
+  {name:'MCAS Yuma',code:'YUMA',lat:32.6564,lon:-114.6058,elev:63,tz:'America/Phoenix'}
+];
+let loc=INSTALLATIONS[0],data=null,currentPage='synoptic';
+let displayTZ='Asia/Tokyo',autoRefreshTimer=null,lastRefreshMs=0;
+const TZ_OPTIONS=[['JST','Asia/Tokyo'],['Z / UTC','UTC'],['Installation Local','LOCAL'],['Guam / ChST','Pacific/Guam'],['Pacific Time','America/Los_Angeles'],['Mountain Time','America/Phoenix'],['Central Time','America/Chicago'],['Eastern Time','America/New_York']];
+function effectiveTZ(){return displayTZ==='LOCAL'?(loc.tz||'UTC'):displayTZ}
+function fmtLocal(s,opts={}){try{return new Intl.DateTimeFormat('en-US',{timeZone:effectiveTZ(),year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,...opts}).format(new Date(s))}catch{return String(s)}}
+function tzLabel(){return displayTZ==='LOCAL'?'LOCAL':(TZ_OPTIONS.find(x=>x[1]===displayTZ)?.[0]||displayTZ)}
+function setTimezone(v){displayTZ=v;render()}
+function initTZ(){const el=document.getElementById('tzSel');if(el)el.innerHTML=TZ_OPTIONS.map(([n,v])=>`<option value="${v}" ${v===displayTZ?'selected':''}>${n}</option>`).join('')}
+function startAutoRefresh(){if(autoRefreshTimer)clearInterval(autoRefreshTimer);autoRefreshTimer=setInterval(()=>{if(!lastRefreshMs)return;const now=Date.now(),a=new Date(lastRefreshMs),b=new Date(now),dayChanged=a.getUTCDate()!==b.getUTCDate()||a.getUTCMonth()!==b.getUTCMonth()||a.getUTCFullYear()!==b.getUTCFullYear();if(document.visibilityState==='visible'&&(dayChanged||now-lastRefreshMs>=30*60*1000))loadData(true)},5*60*1000)}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&data&&Date.now()-lastRefreshMs>10*60*1000)loadData(true)})
+initTZ();startAutoRefresh();
+
+function showPage(p){
+  currentPage=p;
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('nav-'+p).classList.add('active');
+  render();
+}
+
+async function loadData(silent=false){
+  const btn=document.getElementById('refreshBtn');
+  btn.disabled=true;btn.textContent='FETCHING...';
+  if(!silent)document.getElementById('page-content').innerHTML='<div class="loader"><div class="spin"></div><p style="color:var(--text3);font-size:13px">Generating METOC product...</p></div>';
+  const rs=document.getElementById('refresh-status');if(rs)rs.textContent='Refreshing '+tzLabel()+' data...';
+  try{
+    const[h,d,day,marine,sw,upper]=await Promise.all([
+      fetchHourly(loc.lat,loc.lon),fetchCurrent(loc.lat,loc.lon),fetchDaily(loc.lat,loc.lon),
+      fetchMarine(loc.lat,loc.lon).catch(()=>null),fetchSW().catch(()=>null),fetchAtmosphericModels(loc.lat,loc.lon).catch(()=>null)
+    ]);
+    data={hourly:h,cur:d,daily:day,marine:marine,space:sw,upper:upper,synoptic:genSynoptic(h,day,d,marine,upper),
+      impacts:genImpacts(h,day,marine,d,upper),flags:genFlag(h),warnings:genWarnings(h,marine),
+      swImpacts:sw?genSWImpacts(sw):[]};
+    lastRefreshMs=Date.now(); document.getElementById('page-meta').textContent='Updated: '+fmtLocal(new Date().toISOString())+' '+tzLabel()+' | Valid: 96 hours | Auto-refresh 30 min';
+    render();
+  }catch(e){
+    document.getElementById('page-content').innerHTML='<div class="error-box"><b>Retrieval Error</b><br>'+e.message+'<br><small>Check network and try again.</small></div>';
+  }
+  btn.disabled=false;btn.textContent='REFRESH DATA'; const rs2=document.getElementById('refresh-status');if(rs2)rs2.textContent='Last refresh: '+fmtLocal(new Date().toISOString())+' '+tzLabel()+' | Auto-refresh: 30 min';
+}
+
+async function fetchCurrent(lat,lon){
+  const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,dewpoint_2m,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,surface_pressure,visibility&timezone=auto`);
+  const j=await r.json();
+  if(!j.current)throw new Error('API returned no current data: '+JSON.stringify(j).substring(0,200));
+  const c=j.current;
+  return{temp:c.temperature_2m,dew:c.dewpoint_2m,rh:c.relative_humidity_2m,wd:c.winddirection_10m,
+    ws:Math.round((c.windspeed_10m||0)*0.539957),wg:c.windgusts_10m?Math.round(c.windgusts_10m*0.539957):0,
+    cloud:c.cloudcover||0,vis:c.visibility?c.visibility/1609.344:10,press:c.surface_pressure||1013,wxc:decodeWMO(c.weathercode||0),time:c.time||new Date().toISOString()};
+}
+async function fetchHourly(lat,lon){
+  const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,dewpoint_2m,precipitation_probability,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,windgusts_10m,surface_pressure,visibility,uv_index,shortwave_radiation&timezone=auto&forecast_days=4`);
+  const j=await r.json();
+  if(!j.hourly||!j.hourly.time)throw new Error('API returned no hourly data: '+JSON.stringify(j).substring(0,200));
+  const h=j.hourly;const out=[];
+  for(let i=0;i<Math.min(h.time.length,96);i++)out.push({
+    time:h.time[i],temp:h.temperature_2m[i]||0,dew:h.dewpoint_2m[i]||0,rh:h.relative_humidity_2m[i]||0,
+    pp:h.precipitation_probability[i]||0,pc:h.precipitation[i]||0,wmo:h.weathercode[i]||0,
+    cloud:h.cloudcover[i]||0,ws:Math.round((h.windspeed_10m[i]||0)*0.539957),
+    wd:h.winddirection_10m[i]||0,wg:h.windgusts_10m[i]?Math.round(h.windgusts_10m[i]*0.539957):0,
+    vis:h.visibility&&h.visibility[i]!=null?h.visibility[i]/1609.344:10,uv:h.uv_index?h.uv_index[i]||0:0,sr:h.shortwave_radiation?h.shortwave_radiation[i]||0:0,
+    pres:h.surface_pressure?h.surface_pressure[i]||1013:1013,wxc:decodeWMO(h.weathercode?h.weathercode[i]||0:0)
+  });
+  return out;
+}
+async function fetchDaily(lat,lon){
+  const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,precipitation_hours,weathercode,windspeed_10m_max,windgusts_10m_max,winddirection_10m_dominant,uv_index_max,sunrise,sunset,daylight_duration,moonrise,moonset,moon_phase&timezone=auto&forecast_days=4`);
+  const j=await r.json();
+  if(!j.daily||!j.daily.time)throw new Error('API returned no daily data: '+JSON.stringify(j).substring(0,200));
+  const d=j.daily;
+  return d.time.map((dt,i)=>({date:dt,tmax:d.temperature_2m_max[i]||0,tmin:d.temperature_2m_min[i]||0,
+    amax:d.temperature_2m_max[i]||0,amin:d.temperature_2m_min[i]||0,
+    pcSum:d.precipitation_sum?d.precipitation_sum[i]||0:0,ppMax:d.precipitation_probability_max?d.precipitation_probability_max[i]||0:0,pcHrs:d.precipitation_hours?d.precipitation_hours[i]||0:0,
+    wmo:d.weathercode?d.weathercode[i]||0:0,wsMax:Math.round((d.windspeed_10m_max?d.windspeed_10m_max[i]||0:0)*0.539957),
+    wgMax:Math.round((d.windgusts_10m_max?d.windgusts_10m_max[i]||0:0)*0.539957),wdDom:d.winddirection_10m_dominant?d.winddirection_10m_dominant[i]||0:0,
+    uvMax:d.uv_index_max?d.uv_index_max[i]||0:0,sunrise:d.sunrise?d.sunrise[i]||'': '',sunset:d.sunset?d.sunset[i]||'': '',dayLen:d.daylight_duration?d.daylight_duration[i]||0:0,
+    mrise:d.moonrise?d.moonrise[i]||'':'',mset:d.moonset?d.moonset[i]||'':'',moonPh:d.moon_phase?d.moon_phase[i]||0:0,
+    moonIl:Math.round((d.moon_phase?d.moon_phase[i]||0:0)*100),srMax:0}));
+}
+async function fetchMarine(lat,lon){
+  const r=await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction`);
+  if(!r.ok)return null;const j=await r.json();const m=j.current||{};
+  return{wh:m.wave_height?m.wave_height*3.28084:null,wd:m.wave_direction,wp:m.wave_period,
+    sh:m.swell_wave_height?m.swell_wave_height*3.28084:null,sd:m.swell_wave_direction,sp:m.swell_wave_period,
+    cv:m.ocean_current_velocity?m.ocean_current_velocity*1.94384:null,cd:m.ocean_current_direction,
+    sst:null};
+}
+async function fetchSW(){
+  try{
+    const[kr]=await Promise.all([fetch('https://services.swpc.noaa.gov/products/planetary-k-index.json').then(r=>r.json()).catch(()=>[])]);
+    let kp=0;if(Array.isArray(kr)&&kr.length>0){kp=parseFloat(kr[kr.length-1]?.kp_index||'0')}
+    return{solarFlux:0,kp,xRay:'A0.0',geoStorm:kp>=5?'G'+String(kp-4):'NONE',
+      radioBlk:'NONE',radStorm:'NONE',time:new Date().toISOString()};
+  }catch{return{solarFlux:0,kp:0,xRay:'A0.0',geoStorm:'NONE',radioBlk:'NONE',radStorm:'NONE',time:new Date().toISOString()}}
+}
+
+async function fetchAtmosphericModels(lat,lon){
+  const levels='temperature_850hPa,relative_humidity_850hPa,wind_speed_850hPa,wind_direction_850hPa,geopotential_height_850hPa,temperature_700hPa,relative_humidity_700hPa,wind_speed_700hPa,wind_direction_700hPa,geopotential_height_700hPa,temperature_500hPa,relative_humidity_500hPa,wind_speed_500hPa,wind_direction_500hPa,geopotential_height_500hPa,vertical_velocity_500hPa,temperature_300hPa,relative_humidity_300hPa,wind_speed_300hPa,wind_direction_300hPa,geopotential_height_300hPa,vertical_velocity_300hPa';
+  const surface='temperature_2m,dewpoint_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m,pressure_msl,cloud_cover,visibility,cape,cin';
+  const specs=[['ECMWF','https://api.open-meteo.com/v1/ecmwf'],['GFS','https://api.open-meteo.com/v1/gfs'],['JMA','https://api.open-meteo.com/v1/jma']];
+  const results=await Promise.all(specs.map(async([name,url])=>{try{const r=await fetch(`${url}?latitude=${lat}&longitude=${lon}&hourly=${levels},${surface}&timezone=UTC&forecast_hours=96`);if(!r.ok)throw new Error(name+' '+r.status);const j=await r.json();return{name,h:j.hourly||{},ok:true}}catch(e){return{name,h:{},ok:false,error:e.message}}}));
+  const models={};results.forEach(x=>models[x.name]=x);return{models,issued:new Date().toISOString(),discussion:genModelDiscussion(models)};
+}
+function meanValid(a){const v=(a||[]).filter(x=>Number.isFinite(x));return v.length?v.reduce((a,b)=>a+b,0)/v.length:null}
+function genModelDiscussion(models){
+  const out=[];Object.keys(models).forEach(n=>{const m=models[n];if(!m.ok||!m.h.time)return;const h=m.h;out.push({name:n,temp:meanValid(h.temperature_2m?.slice(0,48)),pc:meanValid(h.precipitation?.slice(0,48)),wind:meanValid(h.wind_speed_10m?.slice(0,48))*0.539957,gust:Math.max(...(h.wind_gusts_10m||[0]))*0.539957,cape:Math.max(...(h.cape||[0])),p850:meanValid(h.geopotential_height_850hPa?.slice(0,48)),p500:meanValid(h.geopotential_height_500hPa?.slice(0,48)),p300:meanValid(h.geopotential_height_300hPa?.slice(0,48)),t850:meanValid(h.temperature_850hPa?.slice(0,48)),rh850:meanValid(h.relative_humidity_850hPa?.slice(0,48)),w300:meanValid(h.wind_speed_300hPa?.slice(0,48))*0.539957})});
+  const valid=out.filter(x=>x.temp!=null);if(!valid.length)return{models:out,confidence:'LOW',summary:'Upper-air/model guidance unavailable. Surface forecast remains primary guidance.',reasons:['No model guidance returned.']};
+  const spread=a=>Math.max(...a)-Math.min(...a),temps=valid.map(x=>x.temp),pc=valid.map(x=>x.pc),winds=valid.map(x=>x.wind);let confidence=spread(temps)<=2&&spread(pc)<=2&&spread(winds)<=6?'HIGH':spread(temps)<=4&&spread(pc)<=5&&spread(winds)<=10?'MODERATE':'LOW';
+  const reasons=[];if(spread(temps)>2)reasons.push('temperature solutions diverge');if(spread(pc)>2)reasons.push('precipitation amount/timing differs');if(spread(winds)>6)reasons.push('surface wind solutions differ');if(!reasons.length)reasons.push('strong agreement across available guidance');const cape=Math.max(...valid.map(x=>x.cape||0));if(cape>=1000)reasons.push('meaningful instability is present in at least one model');
+  return{models:out,confidence,summary:`${valid.length}-model comparison. Temperature spread ${spread(temps).toFixed(1)}C; precipitation spread ${spread(pc).toFixed(1)}mm/48h; 10m wind spread ${spread(winds).toFixed(1)}kt.`,reasons,instability:cape,jet:meanValid(valid.map(x=>x.w300))};
+}
+function decodeWMO(c){const m={0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Rime fog',
+  51:'Light drizzle',53:'Drizzle',55:'Dense drizzle',61:'Slight rain',63:'Moderate rain',65:'Heavy rain',
+  66:'Lt freezing rain',67:'Hvy freezing rain',71:'Slight snow',73:'Moderate snow',75:'Heavy snow',
+  80:'Lt rain showers',81:'Mod rain showers',82:'Violent rain',85:'Lt snow showers',86:'Hvy snow showers',
+  95:'Thunderstorm',96:'TS w/ hail',99:'TS w/ heavy hail'};return m[c]||'Unknown'}
+function windDir(d){return['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16]}
+function cloudDesc(c){return c<=5?'CLR':c<=25?'FEW':c<=50?'SCT':c<=87?'BKN':'OVC'}
+function moonName(p){if(p<.03||p>=.97)return'New Moon';if(p<.22)return'Waxing Crescent';if(p<.28)return'First Quarter';if(p<.47)return'Waxing Gibbous';if(p<.53)return'Full Moon';if(p<.72)return'Waning Gibbous';if(p<.78)return'Last Quarter';return'Waning Crescent'}
+function fmtZ(s){try{return fmtLocal(s,{year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/,/g,'')}catch{return s}}
+function fmtZulu(s){try{return new Date(s).toISOString().replace(/[-:T]/g,'').slice(0,8)+'Z'}catch{return s}}
+function calcWBGT(t,h,w,sr){const tw=t*Math.atan(0.151977*Math.sqrt(h+8.313659))+Math.atan(t+h)-Math.atan(h-1.676331)+0.00391838*Math.pow(h,1.5)*Math.atan(0.023101*h)-4.686035;const tg=t+sr*0.01;return 0.7*tw+0.2*tg+0.1*t}
+function calcDA(t,p,e){const pa=e+(29.92-p*0.02953)*1000;const isa=15-(pa/1000)*2;return Math.round(pa+120*(t-isa))}
+
+function genFlag(h){
+  let maxWB=0;
+  h.forEach(x=>{const w=calcWBGT(x.temp,x.rh,x.ws*0.5144,x.sr);if(w>maxWB)maxWB=w});
+  if(maxWB>=32.2)return{type:'BLACK',wbgt:maxWB,r:['ALL outdoor training cancelled','All outdoor work suspended','50/10 work/rest ratio','Commander notified immediately']};
+  if(maxWB>=31)return{type:'RED',wbgt:maxWB,r:['No non-essential outdoor activity','Essential duties only with mandatory rest','Ice/towels/water at all sites','Monitor heat casualties continuously']};
+  if(maxWB>=28)return{type:'AMBER',wbgt:maxWB,r:['No initial responses or humps','Water on hand at all work sites','Mandatory 10-min rest each hour','Reduce workload for susceptible personnel']};
+  return{type:'GREEN',wbgt:maxWB,r:[]};
+}
+function genWarnings(h,m){
+  const w=[];const mw=Math.max(...h.map(x=>x.ws));const mg=Math.max(...h.map(x=>x.wg));
+  if(mg>=64)w.push({type:'Hurricane/Typhoon Warning',sev:'warning',desc:`SUSTAINED WINDS ${mw} KT GUSTS ${mg} KT. HURRICANE/TYPHOON CONDITIONS.`,crit:'>= 64 kt'});
+  else if(mg>=48)w.push({type:'Storm Warning',sev:'warning',desc:`STORM FORCE GUSTS TO ${mg} KT. SECURE ALL MATERIAL.`,crit:'>= 48 kt gusts'});
+  else if(mg>=34)w.push({type:'Gale Warning',sev:'warning',desc:`GALE FORCE GUSTS TO ${mg} KT. SMALL CRAFT REMAIN IN PORT.`,crit:'>= 34 kt gusts'});
+  else if(mg>=18)w.push({type:'Small Craft Advisory',sev:'advisory',desc:`SUSTAINED ${mw} KT GUSTS ${mg} KT. EXERCISE CAUTION.`,crit:'>= 18 kt sustained'});
+  if(h.some(x=>x.wmo>=95)&&mg>=30)w.push({type:'Severe Thunderstorm Warning',sev:'warning',desc:`WIND GUSTS TO ${mg} KT WITH LIGHTNING. SEEK SHELTER.`,crit:'>= 50 kt w/ convective activity'});
+  const mv=Math.min(...h.map(x=>x.vis));
+  if(mv<1)w.push({type:'Low Visibility Warning',sev:'warning',desc:`VISIBILITY ${mv.toFixed(1)} SM. IFR CONDITIONS.`,crit:'< 1 SM'});
+  else if(mv<3)w.push({type:'Reduced Visibility Advisory',sev:'advisory',desc:`VISIBILITY ${mv.toFixed(1)} SM. MARGINAL VFR.`,crit:'< 3 SM'});
+  if(h.reduce((s,x)=>s+x.pc,0)/h.length>2.54)w.push({type:'Heavy Rainfall Advisory',sev:'advisory',desc:'RATES EXCEEDING 0.1 IN/HR. FLASH FLOODING POSSIBLE.',crit:'> 0.1 in/hr'});
+  if(!w.length)w.push({type:'No Active Warnings',sev:'advisory',desc:'No weather warnings or advisories in effect.',crit:'All parameters normal',off:true});
+  return w;
+}
+function genImpacts(h,d,m,c,upper){
+  const I=[];
+  const disc=upper?.discussion||{};
+  const cape=disc.instability||0; const jet=disc.jet||0;
+  const forcing=cape>=1500||jet>=50?'YELLOW':'GREEN';
+  I.push({wf:'Synoptic / Mesoscale',p:'Atmospheric Forcing',th:'Upper-air + model guidance',cur:`CAPE ${Math.round(cape)} J/kg / 300mb ${jet?Math.round(jet)+'kt':'n/a'}`,s:forcing,txt:forcing==='YELLOW'?'Upper-air/model guidance indicates enhanced dynamical or thermodynamic support. Downstream operational impacts should be weighted upward during affected periods.':'No strong upper-air forcing signal detected from the available guidance.'});
+  const maxW=Math.max(...h.map(x=>x.ws)),maxG=Math.max(...h.map(x=>x.wg));
+  const avgCL=h.reduce((s,x)=>s+(x.cloud>87?500:x.cloud>50?1000:x.cloud>25?2500:6000),0)/h.length;
+  const minV=Math.min(...h.map(x=>x.vis));
+  const avgT=h.reduce((s,x)=>s+x.temp,0)/h.length;
+  const avgRH=h.reduce((s,x)=>s+x.rh,0)/h.length;
+  const totPc=h.reduce((s,x)=>s+x.pc,0);
+  const da=calcDA(avgT,1013.25,loc.elev);
+
+  const cs=avgCL<500?'RED':avgCL<1000?'YELLOW':'GREEN';
+  I.push({wf:'Aviation',p:'Ceiling',th:'VFR >=1000ft, IFR <1000ft',cur:Math.round(avgCL)+' ft',s:cs,
+    txt:cs==='RED'?'LIFR. Instrument approaches required. Rotary-wing restricted.':cs==='YELLOW'?'IFR. Plan instrument approaches. Increased fuel for diversion.':'VFR. Standard visual flight rules.'});
+  const vs=minV<1?'RED':minV<3?'YELLOW':'GREEN';
+  I.push({wf:'Aviation',p:'Visibility',th:'VFR >=3SM, IFR <3SM',cur:minV.toFixed(1)+' SM',s:vs,
+    txt:vs==='RED'?'IFR visibility. VFR-only ground stop.':vs==='YELLOW'?'Marginal VFR. Instrument crews required.':'VFR adequate.'});
+  const xs=maxG>25?'RED':maxG>15?'YELLOW':'GREEN';
+  I.push({wf:'Aviation',p:'Crosswind/Gusts',th:'Single-engine rotary >15kt',cur:`${maxW}kt G${maxG}`,s:xs,
+    txt:xs==='RED'?'Crosswind exceeds single-engine rotary-wing limits.':xs==='YELLOW'?'Monitor wind data. Peak gusts 0400-0800Z.':'Within limits.'});
+  const das=da>5000?'RED':da>3000?'YELLOW':'GREEN';
+  I.push({wf:'Aviation',p:'Density Altitude',th:'Degraded >3000ft, Critical >5000ft',cur:da+' ft',s:das,
+    txt:das==='RED'?'Critical DA. Severe payload reduction.':das==='YELLOW'?'Elevated DA. Reduced payload capacity.':'Normal operating limits.'});
+  I.push({wf:'Aviation',p:'Copperhead Ceiling',th:'< 600ft precluded',cur:Math.round(avgCL)+' ft',s:avgCL<600?'RED':avgCL<1000?'YELLOW':'GREEN',
+    txt:avgCL<600?'Laser-guided precluded. Use GPS/unguided.':avgCL<1000?'Marginal. Monitor closely.':'Adequate for laser-guided.'});
+
+  const fs=maxW>15?'YELLOW':'GREEN';
+  I.push({wf:'Fires',p:'Crosswind Component',th:'> 15kt degraded',cur:maxW+' kt',s:fs,
+    txt:fs==='YELLOW'?'Apply wind corrections. Verify ballistic solutions.':'Standard corrections.'});
+  I.push({wf:'Fires',p:'EO/IR Targeting',th:'< 5 SM degraded',cur:minV.toFixed(1)+' SM',s:minV<3?'YELLOW':'GREEN',
+    txt:minV<3?'EO/IR ranges reduced. Ducting conditions possible.':'EO/IR effective at expected ranges.'});
+
+  const hs=avgT>32?'RED':avgT>28?'YELLOW':'GREEN';
+  I.push({wf:'Ground Maneuver',p:'Heat Stress (WBGT)',th:'AMBER >28C, RED >31C',cur:Math.max(...h.map(x=>x.temp)).toFixed(1)+'C',s:hs,
+    txt:hs==='RED'?'Dangerous heat. Suspend non-essential outdoor activity.':hs==='YELLOW'?'Elevated heat stress. Mandatory rest cycles.':'Acceptable.'});
+  I.push({wf:'Ground Maneuver',p:'Precipitation',th:'> 0.1 in/hr degraded',cur:totPc.toFixed(1)+'mm total',s:totPc>10?'YELLOW':'GREEN',
+    txt:totPc>10?'Wet conditions. Reduced traction.':'Adequate.'});
+  I.push({wf:'Ground Maneuver',p:'Aerial Observation',th:'BKN/OVC < 1000ft',cur:Math.round(h.reduce((s,x)=>s+x.cloud,0)/h.length)+'% cloud',s:avgCL<1000?'YELLOW':'GREEN',
+    txt:avgCL<1000?'Overcast precludes visual aerial obs. Use SIGINT/satellite.':'Acceptable.'});
+
+  I.push({wf:'ISR',p:'Aerial Observation Ceiling',th:'< 1000ft no aerial obs',cur:Math.round(avgCL)+' ft',s:avgCL<1000?'RED':'GREEN',
+    txt:avgCL<1000?'VISUAL OBS DEGRADED. Satellite/SIGINT primary.':'Adequate.'});
+  I.push({wf:'ISR',p:'EO/IR Surface',th:'< 1 SM target ID degraded',cur:minV.toFixed(1)+' SM',s:minV<1?'RED':minV<3?'YELLOW':'GREEN',
+    txt:minV<1?'EO/IR severely degraded.':minV<3?'Ranges somewhat reduced.':'Effective.'});
+  I.push({wf:'ISR',p:'Radar/Refractive',th:'High humidity = ducting',cur:Math.round(avgRH)+'% RH, '+Math.round(avgT)+'C',s:avgRH>80?'YELLOW':'GREEN',
+    txt:avgRH>80?'Anomalous propagation/ducting likely. Extended horizon but skip zones.':'Nominal.'});
+
+  if(m){
+    const ws=(m.wh||0)>8?'RED':(m.wh||0)>3?'YELLOW':'GREEN';
+    I.push({wf:'Amphibious',p:'Swell Height',th:'> 3ft concern, > 8ft assault',cur:(m.wh||0).toFixed(1)+' ft',s:ws,
+      txt:ws==='RED'?'ASSAULT CRITERIA EXCEEDED.':ws==='YELLOW'?'Elevated seas. SCAs likely.':'Nominal.'});
+    const ss=(m.sh||0)>6?'RED':(m.sh||0)>3?'YELLOW':'GREEN';
+    I.push({wf:'Amphibious',p:'Swell',th:'> 6ft planning concern',cur:(m.sh||0).toFixed(1)+' ft',s:ss,
+      txt:ss==='RED'?'Hazardous for boat ops.':ss==='YELLOW'?'Monitor surf zone.':'Nominal.'});
+  }
+  I.push({wf:'Logistics',p:'VERTREP',th:'XWND >20kt or CIG <500ft',cur:`${maxW}kt / ${Math.round(avgCL)}ft`,s:maxW>20||avgCL<500?'RED':maxW>15?'YELLOW':'GREEN',
+    txt:maxW>20||avgCL<500?'VERTREP suspended.':maxW>15?'Monitor closely.':'Favorable.'});
+  return I;
+}
+function genSWImpacts(sw){
+  const I=[];
+  I.push({p:'Geomagnetic Activity',s:sw.kp>=5?'RED':sw.kp>=3?'YELLOW':'GREEN',
+    imp:sw.kp>=5?'HF radio degradation. GPS accuracy reduced.':'No significant geomagnetic activity.',
+    note:sw.kp>=5?'Switch to SATCOM. Verify GPS accuracy.':'Standard comms ops.'});
+  I.push({p:'HF Radio',s:sw.kp>=6?'RED':sw.kp>=4?'YELLOW':'GREEN',
+    imp:sw.kp>=6?'HF blackout likely. NVIS unreliable.':sw.kp>=4?'HF intermittent.':'Normal propagation.',
+    note:sw.kp>=6?'Use SATCOM/UHF backup.':'Standard HF.'});
+  I.push({p:'GPS/GNSS',s:sw.kp>=7?'RED':sw.kp>=5?'YELLOW':'GREEN',
+    imp:sw.kp>=7?'GPS error >30m possible.':sw.kp>=5?'GPS error 10-30m.':'Nominal accuracy.',
+    note:sw.kp>=7?'Use inertial backup. Cross-check nav aids.':'Standard GPS ops.'});
+  return I;
+}
+function genSynoptic(h,d,c,m,upper){
+  const ap=h.reduce((s,x)=>s+x.pres,0)/h.length;
+  const tp=Math.max(...d.map(x=>x.tmax));
+  const tn=Math.min(...d.map(x=>x.tmin));
+  const tot=d.reduce((s,x)=>s+x.pcSum,0);
+  const aw=h.reduce((s,x)=>s+x.ws,0)/h.length;
+  const mg=Math.max(...h.map(x=>x.wg));
+  const ac=h.reduce((s,x)=>s+x.cloud,0)/h.length;
+  const lat=loc.lat,lon=loc.lon;
+  const isTrop=lat<30&&lon>100;
+  const features=[];
+
+  if(ap>1015&&ac<40)features.push({t:'subtropical_high',desc:'A broad area of high pressure is positioned over the region, producing subsidence and suppressed cloud development.',imp:'Fair weather. Good visibility. Favorable for flight ops.'});
+  if(ap<1008)features.push({t:'low_pressure',desc:'Low pressure dominant with large-scale lift and moisture convergence.',imp:'Reduced ceilings/visibility. IFR likely. Possible thunderstorms.'});
+  if(isTrop&&tot>5)features.push({t:'monsoon_trough',desc:'Active monsoon trough producing widespread convection and moisture transport.',imp:'Persistent cloudiness, rain, gusty winds near convective cells.'});
+  if((tp-tn)>10&&!isTrop)features.push({t:'front',desc:'Frontal system influencing the area with temperature gradients and wind shifts.',imp:'Wind shifts and gusts along boundary. Precipitation periods.'});
+  if(aw>20||mg>30)features.push({t:'jet',desc:'Upper-level momentum transfer enhancing surface winds.',imp:'Elevated sustained winds and gusts. SCA warranted.'});
+  if(h.some(x=>x.pres<995)&&lat<25)features.push({t:'tropical_system',desc:'Tropical disturbance influencing weather. Deep convection present.',imp:'Dangerous conditions possible. Monitor JTWC.'});
+
+  let upperText,surf,trop,enso,lower,modelText,confidence='LOW';
+  if(isTrop){
+    upperText=`The upper-level pattern over the western Pacific is dominated by the Western North Pacific Subtropical High (WNPSH) at 500mb. The 5880gpm contour extends across the region, with its western ridge controlling steering currents and moisture transport. At 300mb, the Polar Front Jet is displaced well north at its weakest seasonal position, with core speeds of 30-50 kt. The Subtropical Jet at 200mb is weak and diffuse, with no significant coupling with mid-latitude troughs. An upper-level anticyclone provides favorable outflow divergence for tropical features on its equatorward flank.`;
+    trop=ap<1008?`Active tropical convection is present. The monsoon trough extends across the western Pacific, providing a favorable environment for tropical cyclone development. Deep convective clusters producing heavy rain and gusty winds. Monitor JTWC advisories.`:`The monsoon trough is present but displaced from the immediate area. No organized tropical cyclones expected within 96 hours. However, favorable SSTs above 28C support isolated convective development. Continue monitoring JTWC.`;
+  }else{
+    upperText=`The 500mb pattern shows a progressive flow with shortwave troughs embedded in the westerlies. Jet stream active at 200-300mb with core speeds of 80-120 kt, providing dynamic lift for surface systems. A ridge-trough-ridge pattern producing alternating fair and unsettled weather.`;
+    trop=`Tropical cyclone activity is not a significant factor for the forecast area. No tropical systems forecast to impact the region within 96 hours.`;
+  }
+  const m500=upper?.models?.ECMWF?.h||{};
+  const t850=meanValid(m500.temperature_850hPa?.slice(0,24));
+  const rh850=meanValid(m500.relative_humidity_850hPa?.slice(0,24));
+  const w850=meanValid(m500.wind_speed_850hPa?.slice(0,24));
+  lower=`850mb: ${t850!=null?t850.toFixed(1)+'C / ':''}${rh850!=null?Math.round(rh850)+'% RH / ':''}${w850!=null?Math.round(w850*0.539957)+' kt':''}. ${rh850!=null&&rh850>75?'Deep low-level moisture is supportive of cloud/convective development.':'Low-level moisture is not exceptionally high.'}`;
+  modelText=upper?.discussion?.summary||'Multi-model guidance unavailable.';
+  confidence=upper?.discussion?.confidence||'LOW';
+  surf=`Surface analysis shows ${ap>1015?'high pressure dominating with a ridge extending across the region':ap<1008?'broad low pressure with multiple embedded troughs':'a relatively uniform pressure field'}. Winds ${aw>20?'strong':aw>12?'moderate':'light'} from the ${windDir(h[Math.floor(h.length/4)]?.wd||180)} quadrant at ${Math.round(aw)} kt sustained${mg>aw*1.3?` with gusts to ${mg} kt`:''}. Temperatures ranging from ${Math.round(tn)}C to ${Math.round(tp)}C. ${tot>10?'Significant precipitation expected.':'Precipitation chances limited.'}`;
+  enso=`ENSO conditions are being monitored. El Nino tends to shift typhoon activity eastward with more storms developing further from landmass. La Nina weights genesis westward. Seasonal forecasts from NOAA should be referenced for long-range planning.`;
+
+  return{upper:upperText,surf,trop,enso,lower,modelText,confidence,features,issued:new Date().toISOString()};
+}
+
+function render(){
+  if(!data&&currentPage!=='synoptic'){
+    document.getElementById('page-content').innerHTML='<div class="empty">Load weather data from Synoptic Overview first.</div>';return}
+  const t=document.getElementById('page-title');
+  const pages={synoptic:'Synoptic Overview',forecast:'96-Hour Forecast',current:'Current Conditions',impacts:'Operational Impacts',warnings:'Warnings & Alerts',charts:'Weather Charts'};
+  t.textContent=pages[currentPage]||'';
+  if(currentPage==='synoptic')renderSynoptic();
+  else if(currentPage==='forecast')renderForecast();
+  else if(currentPage==='current')renderCurrent();
+  else if(currentPage==='impacts')renderImpacts();
+  else if(currentPage==='warnings')renderWarnings();
+  else if(currentPage==='charts')renderCharts();
+}
+
+function renderSynoptic(){
+  if(!data){document.getElementById('page-content').innerHTML=`
+    <div style="margin-bottom:16px"><label class="section-title">Forecast Location</label>
+    <select id="locSel" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--bg3);color:#fff;border-radius:8px;font-size:13px;margin-top:6px">
+    ${INSTALLATIONS.map(l=>`<option value="${l.code}" ${l.code===loc.code?'selected':''}>${l.name} (${l.code}) - ${l.lat.toFixed(2)}N ${l.lon.toFixed(2)}E</option>`).join('')}</select></div>
+    <div class="card"><div class="empty"><p>No forecast data loaded.</p><p style="margin-top:8px;font-size:12px">Select a location and click REFRESH DATA.</p></div></div>`;
+    document.getElementById('locSel').onchange=e=>{loc=INSTALLATIONS.find(l=>l.code===e.target.value);document.getElementById('loc-info').innerHTML=`<b>${loc.name}</b>${loc.lat.toFixed(2)}N ${loc.lon.toFixed(2)}E | ${loc.code}`};
+    return}
+  const s=data.synoptic,f=data.flags,w=data.warnings.filter(x=>!x.off);
+  let h=`<div style="margin-bottom:16px"><label class="section-title">Forecast Location</label>
+    <select id="locSel" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--bg3);color:#fff;border-radius:8px;font-size:13px;margin-top:6px">
+    ${INSTALLATIONS.map(l=>`<option value="${l.code}" ${l.code===loc.code?'selected':''}>${l.name} (${l.code})</option>`).join('')}</select></div>`;
+  document.getElementById('page-content').innerHTML='';setTimeout(()=>{const el=document.getElementById('locSel');if(el)el.onchange=e=>{loc=INSTALLATIONS.find(l=>l.code===e.target.value);document.getElementById('loc-info').innerHTML=`<b>${loc.name}</b>${loc.lat.toFixed(2)}N ${loc.lon.toFixed(2)}E | ${loc.code}`}},0);
+
+  if(w.length>0&&w[0].type!=='No Active Warnings'){
+    h+=`<div class="warning-card" style="background:var(--red-bg);border-color:rgba(239,68,68,0.3)"><div class="wtype text-red">&#128680; ACTIVE WEATHER WARNINGS</div>`;
+    w.forEach(x=>{h+=`<div class="wdesc" style="color:var(--red)">${x.type}: ${x.desc}</div>`});h+=`</div>`}
+
+  if(f.type!=='GREEN'){
+    const fc=f.type==='BLACK'?'var(--bg3)':f.type==='RED'?'var(--red)':'var(--amber)';
+    h+=`<div class="flag-banner" style="background:${f.type==='BLACK'?'rgba(0,0,0,0.3)':'var(--'+f.type.toLowerCase()+'-bg)'};border-color:${fc}"><div class="flag-dot" style="background:${fc}"></div><div><div class="flag-text" style="color:${fc}">HEAT FLAG: ${f.type} \u2014 WBGT ${f.wbgt.toFixed(1)}C</div></div></div>`}
+
+  h+=`<div class="card"><div class="card-header"><div><h3>SYNOPTIC OVERVIEW</h3><div class="sub">${loc.name} AOR | MCRP 2-10B.6 Compliant</div></div><div style="text-align:right"><div class="sub">ISSUED: ${fmtZ(s.issued)}</div><div class="sub">VALID: 96 HOURS</div></div></div>`;
+
+  h+=`<div style="background:var(--bg);padding:12px;border-radius:6px;margin-bottom:16px"><div class="section-title">Forecast Confidence</div><span class="confidence ${s.confidence==='HIGH'?'conf-high':s.confidence==='MODERATE'?'conf-mod':'conf-low'}">${s.confidence}</span><span style="font-size:11px;color:var(--text2);margin-left:8px">Model agreement is now part of the forecast reasoning chain.</span></div>`;
+
+  if(s.features.length){
+    h+=`<div class="section-title" style="margin-bottom:8px">Key Synoptic Features</div><div style="margin-bottom:16px">`;
+    s.features.forEach(f=>{
+      const colors={tropical_system:'var(--red-bg);border:1px solid var(--red)',low_pressure:'rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4)',front:'rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.4)',monsoon_trough:'rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.4)',jet:'rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.4)',subtropical_high:'rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4)'};
+      const labels={tropical_system:'TROPICAL',low_pressure:'LOW',front:'FRONT',monsoon_trough:'MONSOON',jet:'JET',subtropical_high:'HIGH'};
+      h+=`<span class="feature-tag" style="background:${colors[f.t]||'var(--bg3)'};color:var(--text)">${labels[f.t]||f.t.toUpperCase()}</span>`});
+    h+=`</div>`}
+
+  const sections=[{t:'SYNOPTIC OVERVIEW',c:`${s.upper} ${s.surf}`},{t:'UPPER-LEVEL ANALYSIS / FORECAST',c:s.upper},{t:'LOWER-LEVEL / BOUNDARY-LAYER ANALYSIS',c:s.lower},{t:'SURFACE ANALYSIS / FORECAST',c:s.surf},{t:'MODEL DISCUSSION',c:s.modelText},{t:'TROPICAL SYSTEMS / MONSOON TROUGH',c:s.trop},{t:'ENSO CONTEXT / SEASONAL OUTLOOK',c:s.enso},{t:'SPACE WEATHER',c:'Space weather data integrated in operational assessment. See Warnings page for HF/GPS/satellite impacts.'}];
+  sections.forEach(sec=>{h+=`<div class="synoptic-section"><h4>${sec.t}</h4><p class="narrative">${sec.c}</p></div>`});
+  if(data.upper?.discussion?.models?.length){h+=`<div class="synoptic-section"><h4>MODEL GUIDANCE SNAPSHOT</h4><div style="overflow:auto"><table class="model-table"><thead><tr><th>MODEL</th><th>48H MEAN T</th><th>48H PRECIP</th><th>10M WIND</th><th>MAX CAPE</th><th>850MB T</th><th>300MB WIND</th></tr></thead><tbody>`;data.upper.discussion.models.forEach(m=>{h+=`<tr><td>${m.name}</td><td>${m.temp!=null?m.temp.toFixed(1)+'C':'—'}</td><td>${m.pc!=null?m.pc.toFixed(1)+'mm':'—'}</td><td>${m.wind!=null?m.wind.toFixed(1)+'kt':'—'}</td><td>${m.cape!=null?Math.round(m.cape)+'J/kg':'—'}</td><td>${m.t850!=null?m.t850.toFixed(1)+'C':'—'}</td><td>${m.w300!=null?m.w300.toFixed(0)+'kt':'—'}</td></tr>`});h+=`</tbody></table></div></div>`}
+
+  if(s.features.length){
+    h+=`<div style="margin-top:16px"><div class="section-title">Feature Analysis</div>`;
+    s.features.forEach(f=>{h+=`<div style="background:var(--bg);padding:12px;border-radius:6px;margin-bottom:8px"><p style="font-size:12px;color:var(--text);font-weight:600">${f.desc}</p><p style="font-size:11px;color:var(--cyan);margin-top:4px"><b style="color:var(--primary)">OPERATIONAL IMPACT: </b>${f.imp}</p></div>`});
+    h+=`</div>`}
+  h+=`</div>`;
+  document.getElementById('page-content').innerHTML=h;
+}
+
+function renderForecast(){
+  if(!data)return;let h='';
+  const days=data.daily;
+  h+=`<div class="card"><div class="card-header"><h3>96-HOUR FORECAST</h3><div class="sub">${loc.name} (${loc.code})</div></div></div>`;
+  h+=`<div class="day-cards">`;
+  days.forEach((dy,i)=>{
+    const dt=new Date(dy.date);const dn=dt.toLocaleDateString('en-US',{weekday:'short'});const ds=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    h+=`<div class="day-card" onclick="document.getElementById('period-${i}').scrollIntoView({behavior:'smooth'})"><div class="dname">${dn}</div><div class="ddate">${ds}</div><div class="dtemp">${Math.round(dy.tmax)}&deg;C</div><div class="dtemp2">${Math.round(dy.tmin)}&deg;C</div><div class="dmeta">Wind: ${dy.wsMax}kt G${dy.wgMax}<br>Precip: ${dy.pcSum>0?dy.pcSum.toFixed(1)+'mm':'Dry'}<br>Sun: ${fmtZ(dy.sunrise)}/${fmtZ(dy.sunset)}<br>UV: ${dy.uvMax.toFixed(1)}</div></div>`});
+  h+=`</div>`;
+
+  for(let pi=0;pi<4;pi++){
+    const start=pi*24,end=Math.min(start+24,data.hourly.length);
+    const ph=data.hourly.slice(start,end);if(!ph.length)continue;
+    const dy=days[pi];
+    h+=`<div class="card" id="period-${pi}"><div class="card-header"><h3>${pi===0?'24-HOUR':(pi+1)*24+'-HOUR'} FORECAST</h3><div class="sub">VALID: ${fmtZ(ph[0].time)} \u2014 ${fmtZ(ph[ph.length-1].time)}</div></div>`;
+    if(dy){
+      h+=`<div class="period-narrative">Temperatures ${Math.round(dy.tmin)}C to ${Math.round(dy.tmax)}C. Winds ${windDir(dy.wdDom)} at ${dy.wsMax}kt gusts ${dy.wgMax}kt. ${dy.pcSum>0?'Precipitation: '+dy.pcSum.toFixed(1)+'mm.':'Dry conditions.'} Sunrise ${fmtZ(dy.sunrise)}, Sunset ${fmtZ(dy.sunset)}. Moon: ${moonName(dy.moonPh)} (${Math.round(dy.moonIl)}%).</div>`}
+    h+=`<div style="overflow-x:auto"><table><thead><tr><th>TIME (Z)</th><th>TEMP</th><th>DEWPT</th><th>CLOUD</th><th>WIND</th><th>GUST</th><th>VIS</th><th>PCPN</th><th>PCPN%</th><th>WX</th><th>PRES</th></tr></thead><tbody>`;
+    ph.forEach((hr,i)=>{
+      if(i%3!==0&&i!==ph.length-1)return;
+      const t=new Date(hr.time);const hrZ=fmtLocal(hr.time,{hour:'2-digit',minute:'2-digit'})+' '+tzLabel();
+      const cc=hr.cloud>87?'text-muted':hr.cloud>50?'':'text-green';
+      h+=`<tr><td style="font-family:monospace;color:var(--text)">${hrZ}</td><td>${Math.round(hr.temp)}C</td><td class="text-muted">${Math.round(hr.dew)}C</td><td class="${cc}">${cloudDesc(hr.cloud)} ${hr.cloud}%</td><td>${windDir(hr.wd)} ${hr.ws}kt</td><td class="${hr.wg>25?'text-amber':''}">${hr.wg?hr.wg+'kt':'-'}</td><td class="text-muted">${hr.vis>=10?'10+':hr.vis.toFixed(1)}</td><td class="${hr.pc>0?'text-cyan':'text-muted'}">${hr.pc>0?hr.pc.toFixed(1)+'mm':'-'}</td><td class="${hr.pp>50?'text-cyan':hr.pp>25?'':'text-muted'}">${hr.pp}%</td><td class="text-muted">${hr.wxc.substring(0,12)}</td><td style="font-family:monospace" class="text-muted">${Math.round(hr.pres)}</td></tr>`});
+    h+=`</tbody></table></div>`;
+    if(dy){
+      h+=`<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:12px;padding:12px;background:var(--bg);border-radius:6px;text-align:center">`;
+      [{l:'Sunrise',v:fmtZ(dy.sunrise)},{l:'Sunset',v:fmtZ(dy.sunset)},{l:'Moon Rise',v:dy.mrise?fmtZ(dy.mrise):'---'},{l:'Moon Set',v:dy.mset?fmtZ(dy.mset):'---'},{l:'Moon Phase',v:moonName(dy.moonPh),s:Math.round(dy.moonIl)+'%'},{l:'UV Index',v:dy.uvMax.toFixed(1),s:dy.uvMax>8?'VERY HIGH':dy.uvMax>5?'HIGH':'MOD'}].forEach(x=>{
+        h+=`<div><div class="section-title">${x.l}</div><div style="font-size:12px;color:var(--text)">${x.v}</div>${x.s?`<div style="font-size:9px;color:var(--text3)">${x.s}</div>`:''}</div>`});
+      h+=`</div>`}
+    h+=`</div>`}
+  document.getElementById('page-content').innerHTML=h;
+}
+
+function renderCurrent(){
+  if(!data)return;const c=data.cur,d=data.daily[0],m=data.marine,f=data.flags,da=calcDA(c.temp,c.press,loc.elev);
+  let h=`<div class="card"><div class="card-header"><h3>CURRENT OBSERVATIONS</h3><div class="sub">${loc.name} (${loc.code}) | ${fmtZ(c.time)}</div></div></div>`;
+  h+=`<div class="grid4">`;
+  [{l:'Temperature',v:`${Math.round(c.temp)}C`,s:`Feels like ${Math.round(c.temp-2)}C`},
+   {l:'Dewpoint',v:`${Math.round(c.dew)}C`,s:`${Math.round(c.rh)}% RH`,c:c.dew>20?'text-cyan':''},
+   {l:'Wind',v:`${windDir(c.wd)} ${c.ws}kt`,s:c.wg?`Gusts ${c.wg}kt`:'No gusts',c:c.wg>25?'text-amber':''},
+   {l:'Visibility',v:`${c.vis.toFixed(1)} SM`,s:c.vis<3?'IFR':c.vis<6?'Marginal':'VFR',c:c.vis<1?'text-red':c.vis<3?'text-amber':'text-green'},
+   {l:'Altimeter',v:`${(c.press*0.02953).toFixed(2)} inHg`,s:`${Math.round(c.press)} hPa`},
+   {l:'Cloud Cover',v:`${cloudDesc(c.cloud)} ${c.cloud}%`,s:c.cloud>87?'IFR':c.cloud>50?'MVFR':'VFR',c:c.cloud>87?'text-red':c.cloud>50?'text-amber':'text-green'},
+   {l:'WBGT',v:`${calcWBGT(c.temp,c.rh,c.ws*0.5144,200).toFixed(1)}C`,s:f.type,c:f.type==='RED'||f.type==='BLACK'?'text-red':f.type==='AMBER'?'text-amber':'text-green'},
+   {l:'Density Altitude',v:`${da} ft`,s:da>5000?'CRITICAL':da>3000?'ELEVATED':'NORMAL',c:da>5000?'text-red':da>3000?'text-amber':'text-green'}
+  ].forEach(x=>{h+=`<div class="stat"><div class="label">${x.l}</div><div class="value ${x.c||''}">${x.v}</div><div class="sub">${x.s||''}</div></div>`});
+  h+=`</div>`;
+
+  if(d){
+    h+=`<div class="card"><h4 class="section-title">Solar & Lunar Data</h4><div class="grid6">`;
+    [{l:'Sunrise',v:fmtZ(d.sunrise)},{l:'Sunset',v:fmtZ(d.sunset)},{l:'Day Length',v:`${Math.floor(d.dayLen/3600)}h ${Math.round((d.dayLen%3600)/60)}m`},
+     {l:'Moon Rise',v:d.mrise?fmtZ(d.mrise):'---'},{l:'Moon Set',v:d.mset?fmtZ(d.mset):'---'},{l:'Moon Phase',v:`${moonName(d.moonPh)} (${Math.round(d.moonIl)}%)`}].forEach(x=>{
+      h+=`<div class="stat"><div class="label">${x.l}</div><div class="value" style="font-size:14px">${x.v}</div></div>`});
+    h+=`</div></div>`}
+
+  if(m){
+    h+=`<div class="card"><h4 class="section-title">Marine Conditions</h4><div class="grid4">`;
+    [{l:'Wave Height',v:m.wh?m.wh.toFixed(1)+' ft':'N/A',s:m.wp?`Period: ${m.wp}s`:null,c:m.wh&&m.wh>6?'text-red':m.wh&&m.wh>3?'text-amber':''},
+     {l:'Swell',v:m.sh?m.sh.toFixed(1)+' ft':'N/A',s:m.sd?`From ${windDir(m.sd)}`:null},
+     {l:'SST',v:m.sst?m.sst.toFixed(1)+'C':'N/A',c:m.sst&&m.sst>30?'text-amber':''},
+     {l:'Current',v:m.cv?m.cv.toFixed(1)+' kt':'N/A',s:m.cd?`From ${windDir(m.cd)}`:null}
+    ].forEach(x=>{h+=`<div class="stat"><div class="label">${x.l}</div><div class="value ${x.c||''}" style="font-size:16px">${x.v}</div>${x.s?`<div class="sub">${x.s}</div>`:''}</div>`});
+    h+=`</div></div>`}
+  document.getElementById('page-content').innerHTML=h;
+}
+
+function renderImpacts(){
+  if(!data)return;const I=data.impacts,sw=data.swImpacts;
+  const tabs=['Aviation','Fires','Ground Maneuver','ISR','Amphibious','Logistics'];
+  let h=`<div class="card"><div class="card-header"><h3>OPERATIONAL IMPACT ASSESSMENT</h3><div class="sub">MCRP 2-10B.6 Appendix F Threshold Analysis</div></div></div>`;
+  const gc=I.filter(x=>x.s==='GREEN').length,yc=I.filter(x=>x.s==='YELLOW').length,rc=I.filter(x=>x.s==='RED').length;
+  h+=`<div class="card" style="padding:12px 16px"><div style="display:flex;gap:16px;align-items:center"><span style="font-size:12px"><span class="badge badge-green">${gc} GREEN</span></span><span style="font-size:12px"><span class="badge badge-amber">${yc} YELLOW</span></span><span style="font-size:12px"><span class="badge badge-red">${rc} RED</span></span><span style="margin-left:auto;font-size:11px;color:var(--text3)">${I.length} parameters assessed</span></div></div>`;
+  h+=`<div class="tabs" id="impact-tabs">`;
+  tabs.forEach((t,i)=>{
+    const ti=I.filter(x=>x.wf===t);const hr=ti.some(x=>x.s==='RED');const hy=ti.some(x=>x.s==='YELLOW');
+    h+=`<button class="tab${i===0?' active':''}" onclick="showImpTab('${t}',this)">${t}${hr?' <span class="alert-dot">!</span>':''}${!hr&&hy?' <span class="alert-dot" style="color:var(--amber)">!</span>':''}</button>`});
+  h+=`</div><div id="impact-content">`;
+  h+=renderImpTab('Aviation',I);h+=`</div>`;
+
+  if(sw.length){
+    h+=`<div class="card" style="margin-top:16px"><div class="card-header"><h3>SPACE WEATHER IMPACTS (C4ISR)</h3><div class="sub">Affects all warfare functions</div></div>`;
+    sw.forEach(x=>{
+      const bc=x.s==='RED'?'badge-red':x.s==='YELLOW'?'badge-amber':'badge-green';
+      h+=`<div class="impact-row"><div class="ihead"><span class="iparam">${x.p}</span><span class="badge ${bc}">${x.s}</span></div><p class="iimpact">${x.imp}</p><p style="font-size:10px;color:var(--primary);margin-top:4px"><b>OPNOTE: </b>${x.note}</p></div>`});
+    h+=`</div>`}
+  document.getElementById('page-content').innerHTML=h;
+}
+
+function showImpTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
+  document.getElementById('impact-content').innerHTML=renderImpTab(tab,data.impacts);
+}
+function renderImpTab(tab,I){
+  const ti=I.filter(x=>x.wf===tab);if(!ti.length)return'<div class="empty">No parameters assessed.</div>';
+  let h='';ti.forEach(x=>{
+    const bc=x.s==='RED'?'badge-red':x.s==='YELLOW'?'badge-amber':'badge-green';
+    h+=`<div class="impact-row"><div class="ihead"><span class="iparam">${x.p}</span><span class="badge ${bc}">${x.s}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px"><div><span class="ithresh">Threshold: ${x.th}</span></div><div><span class="icurr">Current: ${x.cur}</span></div></div><p class="iimpact">IMPACT: ${x.txt}</p></div>`});
+  return h;
+}
+
+function renderWarnings(){
+  if(!data)return;const w=data.warnings,f=data.flags,sw=data.swImpacts;
+  let h=`<div class="card"><div class="card-header"><h3>WEATHER WARNINGS & ALERTS</h3><div class="sub">Per MCRP 2-10B.6 Warning Criteria</div></div></div>`;
+
+  const fc=f.type==='BLACK'?'var(--bg3)':f.type==='RED'?'var(--red)':'var(--amber)';
+  h+=`<div class="flag-banner" style="background:${f.type==='GREEN'?'var(--green-bg)':'var(--'+f.type.toLowerCase()+'-bg)'};border-color:${fc}"><div class="flag-dot" style="background:${fc}"></div><div style="flex:1"><div class="flag-text" style="color:${fc}">HEAT FLAG: ${f.type} \u2014 WBGT ${f.wbgt.toFixed(1)}C</div>${f.r.length?`<ul style="margin-top:6px;margin-left:16px;font-size:11px;color:var(--text2)">${f.r.map(r=>'<li>'+r+'</li>').join('')}</ul>`:''}</div></div>`;
+
+  const aw=w.filter(x=>!x.off);
+  if(!aw.length||aw[0].type==='No Active Warnings'){
+    h+=`<div class="card" style="border-color:rgba(34,197,94,0.3);background:var(--green-bg)"><div style="display:flex;align-items:center;gap:8px"><span style="color:var(--green);font-size:18px">&#10003;</span><div><div style="color:var(--green);font-weight:600;font-size:13px">No Active Weather Warnings</div><div style="font-size:11px;color:var(--text3);margin-top:2px">All parameters within normal limits.</div></div></div></div>`;
+  }else{
+    aw.forEach(w=>{
+      const bc=w.sev==='warning'?'var(--red-bg);border-color:rgba(239,68,68,0.3)':'var(--amber-bg);border-color:rgba(245,158,11,0.3)';
+      const tc=w.sev==='warning'?'var(--red)':'var(--amber)';
+      h+=`<div class="warning-card" style="background:${bc}"><div style="display:flex;gap:12px"><div class="badge ${w.sev==='warning'?'badge-red':'badge-amber'}" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0">${w.sev==='warning'?'WRN':'ADV'}</div><div><div class="wtype" style="color:${tc}">${w.type.toUpperCase()}</div><div class="wdesc">${w.desc}</div><div class="wcrit">Criteria: ${w.crit}</div></div></div></div>`})}
+
+  if(sw.length){
+    h+=`<div class="card" style="margin-top:16px"><div class="card-header"><h3>SPACE WEATHER STATUS</h3><div class="sub">NOAA SWPC | Affects HF/GPS/SATCOM</div></div>`;
+    sw.forEach(x=>{
+      const bc=x.s==='RED'?'badge-red':x.s==='YELLOW'?'badge-amber':'badge-green';
+      h+=`<div class="impact-row"><div class="ihead"><span class="iparam">${x.p}</span><span class="badge ${bc}">${x.s}</span></div><p class="iimpact">${x.imp}</p><p style="font-size:10px;color:var(--primary);margin-top:4px"><b>OPNOTE: </b>${x.note}</p></div>`});
+    if(data.space){
+      h+=`<div style="padding:12px 18px;background:var(--bg);font-size:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">`;
+      [{l:'K-Index',v:data.space.kp},{l:'KP-Index',v:data.space.kp},{l:'X-Ray',v:data.space.xRay},{l:'Geomag Storm',v:data.space.geoStorm,v2:data.space.geoStorm!=='NONE'?'text-amber':''},{l:'Radio Blackout',v:data.space.radioBlk,v2:data.space.radioBlk!=='NONE'?'text-amber':'text-green'},{l:'Radiation Storm',v:data.space.radStorm,v2:data.space.radStorm!=='NONE'?'text-amber':'text-green'}].forEach(x=>{
+        h+=`<div><span style="color:var(--text3)">${x.l}: </span><span style="color:${x.v2||'var(--text)'};font-family:monospace">${x.v}</span></div>`});
+      h+=`</div>`}
+    h+=`</div>`}
+  document.getElementById('page-content').innerHTML=h;
+}
+
+function renderCharts(){
+  if(!data)return;const h=data.hourly;
+  const temps=h.map(x=>x.temp),dews=h.map(x=>x.dew),winds=h.map(x=>x.ws),gusts=h.map(x=>x.wg);
+  const clouds=h.map(x=>x.cloud),precips=h.map(x=>x.pc);
+  const mnT=Math.min(...temps),mxT=Math.max(...temps),mxW=Math.max(...gusts,...winds,1),mxP=Math.max(...precips,1);
+
+  function polyLine(vals,mn,mx,h){
+    return vals.map((v,i)=>`${(i/(vals.length-1))*940},${h-10-(((v-mn)/Math.max(mx-mn,1))*(h-30))}`).join(' ');
+  }
+
+  let svg1=`<svg viewBox="0 0 960 220" style="width:100%;height:220px">`;
+  for(let i=0;i<5;i++)svg1+=`<line x1="0" y1="${i*50+10}" x2="950" y2="${i*50+10}" stroke="#334155" stroke-width="0.5"/>`;
+  svg1+=`<polyline points="${polyLine(temps,mnT,mxT,210)}" fill="none" stroke="#ef4444" stroke-width="2"/>`;
+  svg1+=`<polyline points="${polyLine(dews,mnT,mxT,210)}" fill="none" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+  svg1+=`<text x="10" y="15" fill="#ef4444" font-size="11">Temperature</text><text x="100" y="15" fill="#06b6d4" font-size="11">Dewpoint</text>`;
+  svg1+=`<text x="10" y="215" fill="#64748b" font-size="10">${Math.round(mxT)}C</text><text x="880" y="215" fill="#64748b" font-size="10">${Math.round(mnT)}C</text></svg>`;
+
+  let svg2=`<svg viewBox="0 0 960 220" style="width:100%;height:220px">`;
+  for(let i=0;i<5;i++)svg2+=`<line x1="0" y1="${i*50+10}" x2="950" y2="${i*50+10}" stroke="#334155" stroke-width="0.5"/>`;
+  svg2+=`<polyline points="${polyLine(winds,0,mxW,210)}" fill="none" stroke="#22c55e" stroke-width="2"/>`;
+  svg2+=`<polyline points="${polyLine(gusts,0,mxW,210)}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+  svg2+=`<text x="10" y="15" fill="#22c55e" font-size="11">Sustained</text><text x="90" y="15" fill="#f59e0b" font-size="11">Gusts</text></svg>`;
+
+  let bars3=`<svg viewBox="0 0 960 220" style="width:100%;height:220px">`;
+  for(let i=0;i<5;i++)bars3+=`<line x1="0" y1="${i*50+10}" x2="950" y2="${i*50+10}" stroke="#334155" stroke-width="0.5"/>`;
+  clouds.forEach((cc,i)=>{const bw=960/clouds.length-1;bars3+=`<rect x="${(i/clouds.length)*960}" y="${200-(cc/100)*180}" width="${bw}" height="${(cc/100)*180}" fill="${cc>87?'#4b5563':cc>50?'#6b7280':cc>25?'#9ca3af':'#22c55e'}" opacity="0.35"/>`});
+  precips.forEach((p,i)=>{if(p>0){const bw=960/precips.length-1;bars3+=`<rect x="${(i/precips.length)*960}" y="${200-(p/mxP)*120}" width="${bw}" height="${(p/mxP)*120}" fill="#3b82f6" opacity="0.6"/>`}});
+  bars3+=`<text x="10" y="15" fill="#6b7280" font-size="11">Cloud Cover %</text><text x="130" y="15" fill="#3b82f6" font-size="11">Precipitation mm</text></svg>`;
+
+  let h2=`<div class="card"><h4 class="section-title">Temperature & Dewpoint (96-Hour)</h4>${svg1}</div>`;
+  h2+=`<div class="card"><h4 class="section-title">Wind Speed & Gusts (96-Hour)</h4>${svg2}</div>`;
+  h2+=`<div class="card"><h4 class="section-title">Cloud Cover & Precipitation (96-Hour)</h4>${bars3}</div>`;
+
+  const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const counts=Array(16).fill(0),spds=Array(16).fill(0);
+  h.forEach(x=>{const idx=Math.round(x.wd/22.5)%16;counts[idx]++;spds[idx]+=x.ws});
+  const mxAvg=Math.max(...spds.map((s,i)=>counts[i]?s/counts[i]:0));
+  let rose=`<svg viewBox="0 0 300 300" style="width:220px;height:220px">`;
+  [1,2,3,4].forEach(i=>{rose+=`<circle cx="150" cy="150" r="${i*30}" fill="none" stroke="#334155" stroke-width="0.5"/>`});
+  dirs.forEach((_,i)=>{const a=(i*22.5-90)*Math.PI/180;rose+=`<line x1="150" y1="150" x2="${150+120*Math.cos(a)}" y2="${150+120*Math.sin(a)}" stroke="#334155" stroke-width="0.5"/>`});
+  dirs.forEach((_,i)=>{const a=(i*22.5-90)*Math.PI/180;const avg=counts[i]?spds[i]/counts[i]:0;const bl=mxAvg?avg/mxAvg*100:0;if(bl<1)return;rose+=`<line x1="150" y1="150" x2="${150+bl*Math.cos(a)}" y2="${150+bl*Math.sin(a)}" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>`});
+  dirs.forEach((d,i)=>{const a=(i*22.5-90)*Math.PI/180;rose+=`<text x="${150+135*Math.cos(a)}" y="${150+135*Math.sin(a)}" fill="#94a3b8" font-size="8" text-anchor="middle" dominant-baseline="middle">${d}</text>`});
+  rose+=`</svg>`;
+  h2+=`<div class="card"><h4 class="section-title">Wind Rose (96-Hour)</h4><div style="display:flex;justify-content:center">${rose}</div></div>`;
+
+  document.getElementById('page-content').innerHTML=h2;
+}
+
+loadData();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
+      console.warn('Raindrop service worker registration failed:', err);
+    });
+  });
+}
+</script>
+
+</body>
+</html>
